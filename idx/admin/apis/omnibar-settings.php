@@ -128,13 +128,7 @@ class Omnibar_Settings extends \IDX\Admin\Rest_Controller {
 		);
 		$custom_fields_options = array_map(
 			function ( $mls ) {
-				$mls['fieldNames'] = $this->map_keys(
-					$mls['fieldNames'],
-					[
-						'name'        => 'value',
-						'displayName' => 'label',
-					]
-				);
+				$mls['fieldNames'] = $this->filter_custom_fields( $mls['fieldNames'] );
 				return $mls;
 			},
 			$custom_fields_options
@@ -387,6 +381,40 @@ class Omnibar_Settings extends \IDX\Admin\Rest_Controller {
 	private function update_location_data( $addresses_changed ) {
 		$update = $addresses_changed ? 'all' : 'custom';
 		wp_schedule_single_event( time(), 'idx_get_new_location_data', [ $update ] );
+	}
+
+	/**
+	 * Filters custom field list.
+	 *
+	 * Blacklists certain custom fields and maps field names for frontend usage.
+	 *
+	 * @param array $fields Custom field array.
+	 * @return array
+	 */
+	private function filter_custom_fields( $fields ) {
+		// Hash table for blacklisted custom fields.
+		$blacklist = [
+			'address'    => true,
+			'cityName'   => true,
+			'countyName' => true,
+			'zipcode'    => true,
+		];
+		return array_reduce(
+			$fields,
+			function( $carry, $field ) use ( &$blacklist ) {
+				$field = (array) $field;
+				if ( ! isset( $blacklist[ $field['name'] ] ) ) {
+					$carry[] = [
+						'value'      => $field['name'],
+						'label'      => $field['displayName'],
+						'mlsPtID'    => $field['mlsPtID'],
+						'parentPtID' => $field['parentPtID'],
+					];
+				}
+				return $carry;
+			},
+			[]
+		);
 	}
 }
 
